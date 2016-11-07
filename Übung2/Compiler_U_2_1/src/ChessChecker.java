@@ -35,14 +35,15 @@ public class ChessChecker implements IChessChecker {
             reasons.add(ChessState.BISHOP_ON_SAME_COLOR);
 
         //prüfe ob beide Könige exisitieren, falls ja: überprüfe ob beide nicht im Schach stehen
-        ChessPlayer playerInChess = ChessPlayer.NOBODY;
+        ChessPlayer playerInChess = null;
         if(allFigures.get('K') == null || allFigures.get('k') == null) reasons.add(ChessState.KING_MISSING);
         else {
-            boolean whiteKingChess = isKingInChess(allFigures.get('K'));
-            boolean blackKingChess = isKingInChess(allFigures.get('k'));
+            boolean whiteKingChess = isKingInChess(allFigures.get('K'), ChessPlayer.WHITE);
+            boolean blackKingChess = isKingInChess(allFigures.get('k'), ChessPlayer.BACK);
             if(whiteKingChess && blackKingChess) reasons.add(ChessState.BOTH_KINGS_ARE_IN_CHESS);
             else if(whiteKingChess) playerInChess = ChessPlayer.WHITE;
             else if(blackKingChess) playerInChess = ChessPlayer.BACK;
+            else playerInChess = ChessPlayer.NOBODY;
         }
 
         if(reasons.isEmpty()) {
@@ -51,9 +52,130 @@ public class ChessChecker implements IChessChecker {
         return new ChessState(s, reasons.toArray(new Integer[reasons.size()]));
     }
 
-    private boolean isKingInChess(List<Integer> kingPosition) {
-        return Objects.equals(kingPosition.get(0), kingPosition.get(1));
+    /**
+     * Überprüft, ob der König der Spielerfarbe player im Schach steht
+     */
+    private boolean isKingInChess(List<Integer> kingPosition, ChessPlayer player) {
+        List<Character> foes = new ArrayList<>(figures);
+        //wenn white, dann Gegner schwarz und Buchstaben klein
+        if(player == ChessPlayer.WHITE) {
+            for(int i = 0; i<foes.size(); i++) {
+                foes.set(i, Character.toLowerCase(foes.get(i)));
+            }
+        }
+        for(Character c : foes){
+            //horizontal oder vertikal zu dame oder turm ohne andere Figur dazwischen
+            //diagonal zu dame oder läufer
+            //diagonal ein feld zu bauer
+            //springer ganz komisch
+            List<Integer> pos = allFigures.get(c);
+            if(pos == null) continue;
+            switch(c){
+                case 'K':
+                case 'k':
+                    if(isHorizontallyOrVerticallyChess(kingPosition, pos, 1) || isDiagonalChess(kingPosition, pos, 1))
+                        return true;
+                    break;
+                case 'Q':
+                case 'q':
+                    if(isHorizontallyOrVerticallyChess(kingPosition, pos, 8) || isDiagonalChess(kingPosition, pos, 8))
+                        return true;
+                    break;
+                case 'R':
+                case 'r':
+                    if(isHorizontallyOrVerticallyChess(kingPosition, pos, 8)) return true;
+                    break;
+                case 'B':
+                case 'b':
+                    if(isDiagonalChess(kingPosition, pos, 8)) return true;
+                    break;
+                case 'N':
+                case 'n':
+                    if(inKnightChess(kingPosition, pos)) return true;
+                    break;
+                case 'P':
+                case 'p':
+                    if(isDiagonalChess(kingPosition, pos, 1)) return true;
+            }
+        }
+        return false;
     }
+
+    private boolean inKnightChess(List<Integer> kingPosition, List<Integer> knightPositions) {
+        for(int i = 0; i<knightPositions.size()/2; i+=2) {
+            //nicht horizontal oder vertikal gleich
+            if(Objects.equals(kingPosition.get(0), knightPositions.get(i)) ||
+                    Objects.equals(kingPosition.get(1), knightPositions.get(i+1))) break;
+            if(Math.abs(kingPosition.get(0) - knightPositions.get(i)) +
+                    Math.abs(kingPosition.get(1) - knightPositions.get(i+1)) == 3) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Überprüft ob der König diagonal im Schach steht innerhalb der Reichweite range.
+     */
+    private boolean isDiagonalChess(List<Integer> kingPosition, List<Integer> foePositions, int range) {
+        for(int i = 0; i<foePositions.size()/2; i+=2) {
+            if(Math.abs(kingPosition.get(0) + kingPosition.get(1) - foePositions.get(0) - foePositions.get(1)) <= range &&
+                    isNotBlocked(kingPosition, foePositions)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Überprüft ob der König horizontal oder vertikal im Schach steht innerhalb der Reichweite range.
+     */
+    private boolean isHorizontallyOrVerticallyChess(List<Integer> kingPosition, List<Integer> foePositions, int range) {
+        for(int i = 0; i<foePositions.size()/2; i+=2){
+            if(Objects.equals(kingPosition.get(0), foePositions.get(i)) &&
+                    Math.abs(kingPosition.get(0) - foePositions.get(i)) <=range &&
+                    isNotBlocked(kingPosition, foePositions))
+                return true;
+            if(Objects.equals(kingPosition.get(1), foePositions.get(i+1)) &&
+                    Math.abs(kingPosition.get(1) - foePositions.get(i+1)) <=range &&
+                    isNotBlocked(kingPosition, foePositions))
+                return true;
+        }
+        return false;
+    }
+
+    /**
+     * Gibt true zurück, wenn keine Figur zwischen den zwei Positionen steht. 
+     */
+    private boolean isNotBlocked(List<Integer> start, List<Integer> target) {
+        //wenn nicht diagonal zueinander und nicht direkt nebeneinander, überprüfe nur eine Richtung
+        if(Objects.equals(start.get(0), target.get(0)) && Math.abs(start.get(1) - target.get(1)) > 1){
+            int i = start.get(1);
+            while(i != target.get(1)) {
+                if(i < target.get(1)) i++;
+                else if(i > target.get(1)) i--;
+                if(fieldTaken[start.get(0)][i]) return false;
+            }
+        }
+        else if(Objects.equals(start.get(1), target.get(1)) && Math.abs(start.get(0) - target.get(0)) > 1){
+            int i = start.get(0);
+            while(i != target.get(0)) {
+                if(i < target.get(0)) i++;
+                else if(i > target.get(0)) i--;
+                if(fieldTaken[i-1][start.get(1)-1]) return false;
+            }
+        }
+        //diagonal
+        else {
+            int i = start.get(0);
+            int j = start.get(1);
+            while(i != target.get(0) && j != target.get(1)) {
+                if(i < target.get(0)) i++;
+                else if(i > target.get(0)) i--;
+                if(j < target.get(1)) j++;
+                else if(j > target.get(1)) j--;
+                if(fieldTaken[i-1][j-1]) return false;
+            }
+        }
+        return true;
+    }
+
 
     private boolean areBishopsValid(List<Integer> bishopPositions) {
         /* wenn beide Läufer vorhanden sind, muss die Summe einer Position ungerade sein und der anderen gerade
@@ -141,7 +263,7 @@ public class ChessChecker implements IChessChecker {
     }
 
     private int positionInAlphabet(char c) {
-        return "abcdefgh".indexOf(c);
+        return "abcdefgh".indexOf(c)+1;
     }
 
     private boolean isRow(char c) {
@@ -158,11 +280,10 @@ public class ChessChecker implements IChessChecker {
 
     public static void main(String[] args) {
         ChessChecker checker = new ChessChecker();
-        String placement = "qa8Bf7kb3rg5Kf4Pa7Pb7nf2";
+        String placement = "qa8Bf7kf1rg5Kf4Pa7Pb7nf2";
         ChessState state = checker.checkPlacement(placement);
-        System.out.print(Objects.equals(state.getPlacement(), placement) + "\n");
         System.out.print(state.whoIsInChess().name() + "\n");
-        System.out.print(state.isValid() + "\n");
+        System.out.print("Gültige Platzierung: " + state.isValid() + "\n");
     }
 }
 

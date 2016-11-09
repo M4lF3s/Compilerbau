@@ -9,7 +9,7 @@
       for(i = 0; i<x;i++)
       {
           lineCount++;
-          printf("%i", lineCount);
+          printf(" ");
       }
     }
 

@@ -1,16 +1,16 @@
-import javafx.util.Pair;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import uni_bayreuth.ai6.compiler.contextfreegrammar.ContextFreeGrammar;
 import uni_bayreuth.ai6.compiler.contextfreegrammar.ContextFreeProduction;
 import uni_bayreuth.ai6.compiler.contextfreegrammar.ContextFreeRule;
+import uni_bayreuth.ai6.compiler.exercises.FirstAndControlSets.interfaces.InvalidCombinationException;
+import uni_bayreuth.ai6.compiler.exercises.FirstAndControlSets.interfaces.WordNotInLanguageOfGrammarException;
 import uni_bayreuth.ai6.compiler.interfaces.NonTerminal;
 import uni_bayreuth.ai6.compiler.interfaces.Terminal;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 
 public class PredictiveParserTest {
@@ -37,7 +37,7 @@ public class PredictiveParserTest {
     public static List<Terminal> w4 = new ArrayList<>(Arrays.asList(b, a, a));
     public static List<Terminal> w5 = new ArrayList<>(Arrays.asList(b, b, a, b, b, a, b, b, a, b, b, a));
 
-    public static LLKTable table = new LLKTable(Arrays.asList(Arrays.asList(b, b), Arrays.asList(b, a),
+    public static LLKTableImpl table = new LLKTableImpl(Arrays.asList(Arrays.asList(b, b), Arrays.asList(b, a),
             Arrays.asList(stringEnd)), Arrays.asList(S, A), 2);
 
     public static List<ContextFreeProduction> w1Result = new ArrayList<>(Arrays.asList(p1, p4, p1, p4, p3));
@@ -54,20 +54,20 @@ public class PredictiveParserTest {
         G.addRule(r1);
         G.addRule(r2);
 
-        table.setRow(S, Arrays.asList(1, null, 2));
-        table.setRow(A, Arrays.asList(null, 1, null));
+        table.setRow(S, Arrays.asList(p1, null, p3));
+        table.setRow(A, Arrays.asList(null, p4, null));
     }
 
     @Test
-    public void testTable() {
-        Assert.assertEquals(Integer.valueOf(1), table.getRuleIndice(S, Arrays.asList(b, b)));
-        Assert.assertEquals(Integer.valueOf(1), table.getRuleIndice(A, Arrays.asList(b, a)));
+    public void testTable() throws InvalidCombinationException {
+        Assert.assertEquals(p1, table.getTableEntry(S, Arrays.asList(b, b)));
+        Assert.assertEquals(p4, table.getTableEntry(A, Arrays.asList(b, a)));
     }
 
-    @Test
-    public void testTableException() {
-        Assert.assertNull(table.getRuleIndice(S, Arrays.asList(b, a)));
-        Assert.assertNull(table.getRuleIndice(A, Arrays.asList(b, b)));
+    @Test(expected = InvalidCombinationException.class)
+    public void testTableException() throws InvalidCombinationException {
+        table.getTableEntry(S, Arrays.asList(b, a));
+        table.getTableEntry(A, Arrays.asList(b, b));
     }
 
     @Test
@@ -77,10 +77,4 @@ public class PredictiveParserTest {
         Assert.assertEquals(w1Result, PredictiveParser.parse(G, w3, table));
         Assert.assertEquals(w5Result, PredictiveParser.parse(G, w5, table));
     }
-
-    @Test(expected = WordNotInLanguageOfGrammarException.class)
-    public void testException() throws WordNotInLanguageOfGrammarException {
-        PredictiveParser.parse(G, w4, table);
-    }
-
 }

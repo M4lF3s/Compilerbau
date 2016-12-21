@@ -6,8 +6,8 @@ public class TerminalImpl implements Terminal {
     private String value;
 
     public TerminalImpl(String value) {
-        if(value == null || value.length() == 0) this.value = Symbol.EMPTY_WORD_STRING;
-        else if(value.equals("$")) this.value = Symbol.END_OF_FILE_STRING;
+        if (value == null || value.length() == 0) this.value = Symbol.EMPTY_WORD_STRING;
+        else if (value.equals("$")) this.value = Symbol.END_OF_FILE_STRING;
         else this.value = value;
     }
 
